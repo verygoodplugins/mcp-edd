@@ -1,0 +1,94 @@
+{
+  "$schema": "https://cdn.jsdelivr.net/npm/@anthropic-ai/mcp@0.1.0/dist/registry-schema.json",
+  "name": "io.github.verygoodplugins/mcp-edd",
+  "display_name": "Easy Digital Downloads",
+  "description": "MCP server for Easy Digital Downloads REST API - access sales, customers, products, and analytics",
+  "repository": "https://github.com/verygoodplugins/mcp-edd",
+  "homepage": "https://github.com/verygoodplugins/mcp-edd",
+  "license": "GPL-3.0",
+  "authors": [
+    {
+      "name": "Very Good Plugins",
+      "url": "https://verygoodplugins.com"
+    }
+  ],
+  "keywords": [
+    "easy-digital-downloads",
+    "edd",
+    "ecommerce",
+    "wordpress",
+    "sales",
+    "analytics"
+  ],
+  "installation": {
+    "npm": {
+      "package": "@verygoodplugins/mcp-edd"
+    }
+  },
+  "configuration": {
+    "env": {
+      "EDD_API_URL": {
+        "description": "Your EDD store API URL (e.g., https://example.com/edd-api/)",
+        "required": true
+      },
+      "EDD_API_KEY": {
+        "description": "Your EDD API public key",
+        "required": true
+      },
+      "EDD_API_TOKEN": {
+        "description": "Your EDD API token",
+        "required": true
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "edd_list_products",
+      "description": "List all products from the EDD store"
+    },
+    {
+      "name": "edd_get_product",
+      "description": "Get detailed product info by ID"
+    },
+    {
+      "name": "edd_list_sales",
+      "description": "List recent sales with optional filters"
+    },
+    {
+      "name": "edd_get_sale",
+      "description": "Get sale by ID or purchase key"
+    },
+    {
+      "name": "edd_list_customers",
+      "description": "List customers with purchase stats"
+    },
+    {
+      "name": "edd_get_customer",
+      "description": "Get customer by ID or email"
+    },
+    {
+      "name": "edd_get_stats",
+      "description": "Get earnings or sales statistics"
+    },
+    {
+      "name": "edd_get_stats_by_date",
+      "description": "Get daily stats for a date range"
+    },
+    {
+      "name": "edd_get_stats_by_product",
+      "description": "Get stats breakdown by product"
+    },
+    {
+      "name": "edd_list_discounts",
+      "description": "List all discount codes"
+    },
+    {
+      "name": "edd_get_discount",
+      "description": "Get discount details by ID"
+    },
+    {
+      "name": "edd_get_download_logs",
+      "description": "Get file download history"
+    }
+  ]
+}
