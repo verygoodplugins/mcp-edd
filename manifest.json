@@ -1,0 +1,73 @@
+{
+  "manifest_version": "0.2",
+  "name": "mcp-edd",
+  "display_name": "Easy Digital Downloads",
+  "version": "1.0.0",
+  "description": "MCP server for Easy Digital Downloads - sales, customers, products, analytics",
+  "author": {
+    "name": "Very Good Plugins",
+    "url": "https://verygoodplugins.com"
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/index.js"],
+      "env": {
+        "EDD_API_URL": "${user_config.edd_api_url}",
+        "EDD_API_KEY": "${user_config.edd_api_key}",
+        "EDD_API_TOKEN": "${user_config.edd_api_token}"
+      }
+    }
+  },
+  "user_config": {
+    "edd_api_url": {
+      "type": "string",
+      "title": "Store API URL",
+      "description": "Your EDD store API endpoint (e.g., https://example.com/edd-api/)",
+      "required": true
+    },
+    "edd_api_key": {
+      "type": "string",
+      "title": "API Key",
+      "description": "Your EDD API public key (found in Downloads → Settings → API)",
+      "sensitive": true,
+      "required": true
+    },
+    "edd_api_token": {
+      "type": "string",
+      "title": "API Token",
+      "description": "Your EDD API token (found in Downloads → Settings → API)",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "tools": [
+    { "name": "edd_list_products", "description": "List all products from the EDD store" },
+    { "name": "edd_get_product", "description": "Get detailed product info by ID" },
+    { "name": "edd_list_sales", "description": "List recent sales with optional filters" },
+    { "name": "edd_get_sale", "description": "Get sale by ID or purchase key" },
+    { "name": "edd_list_customers", "description": "List customers with purchase stats" },
+    { "name": "edd_get_customer", "description": "Get customer by ID or email" },
+    { "name": "edd_get_stats", "description": "Get earnings or sales statistics" },
+    { "name": "edd_get_stats_by_date", "description": "Get daily stats for a date range" },
+    { "name": "edd_get_stats_by_product", "description": "Get stats breakdown by product" },
+    { "name": "edd_list_discounts", "description": "List all discount codes" },
+    { "name": "edd_get_discount", "description": "Get discount details by ID" },
+    { "name": "edd_get_download_logs", "description": "Get file download history" }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/verygoodplugins/mcp-edd"
+  },
+  "homepage": "https://github.com/verygoodplugins/mcp-edd",
+  "license": "GPL-3.0",
+  "keywords": ["edd", "easy-digital-downloads", "ecommerce", "sales", "wordpress"],
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  }
+}

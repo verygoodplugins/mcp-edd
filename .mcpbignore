@@ -1,0 +1,30 @@
+# Development files
+src/
+tests/
+*.ts
+tsconfig.json
+jest.config.cjs
+eslint.config.mjs
+.prettierrc
+
+# Dev dependencies (large)
+node_modules/@types/
+node_modules/typescript/
+node_modules/ts-jest/
+node_modules/tsx/
+node_modules/jest*/
+node_modules/eslint*/
+node_modules/@eslint/
+node_modules/prettier/
+node_modules/@typescript-eslint/
+node_modules/typescript-eslint/
+
+# Git and CI
+.git/
+.github/
+
+# Other
+*.md
+!README.md
+.gitignore
+package-lock.json
