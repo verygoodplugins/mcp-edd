@@ -7,12 +7,12 @@ MCP server for [Easy Digital Downloads](https://easydigitaldownloads.com/) REST 
 
 ## Features
 
-- **12 MCP tools** covering all EDD REST API endpoints
-- **Sales analytics** - revenue, transaction counts, date ranges
-- **Customer data** - purchase history, lifetime value
-- **Product catalog** - pricing tiers, licensing info
-- **Discount codes** - usage stats and configuration
-- **Download logs** - file download tracking
+- 📊 **Sales Analytics** - Revenue, transaction counts, date ranges
+- 👥 **Customer Data** - Purchase history, lifetime value
+- 🛍️ **Product Catalog** - Pricing tiers, licensing info
+- 🏷️ **Discount Codes** - Usage stats and configuration
+- 📥 **Download Logs** - File download tracking
+- 🔒 **Type Safety** - Full Zod schema validation
 
 ## Installation
 
@@ -135,6 +135,15 @@ npm run test:all           # All tests
 npm run lint
 ```
 
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes with tests
+4. Submit a pull request
+
 ## API Reference
 
 This server wraps the [EDD REST API](https://easydigitaldownloads.com/categories/docs/api-reference/). See their documentation for detailed endpoint information.
@@ -143,10 +152,13 @@ This server wraps the [EDD REST API](https://easydigitaldownloads.com/categories
 
 GPL-3.0 - see [LICENSE](LICENSE) for details.
 
-## Author
+## Support
 
-[Very Good Plugins](https://verygoodplugins.com)
+For issues, questions, or suggestions:
+
+- [Open an issue on GitHub](https://github.com/verygoodplugins/mcp-edd/issues)
+- [Contact Very Good Plugins](https://verygoodplugins.com/contact/?utm_source=github)
 
 ---
 
-Built with the [Model Context Protocol](https://modelcontextprotocol.io/)
+Built with 🧡 by [Very Good Plugins](https://verygoodplugins.com/?utm_source=github)

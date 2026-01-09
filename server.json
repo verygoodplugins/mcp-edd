@@ -1,46 +1,24 @@
 {
-  "$schema": "https://cdn.jsdelivr.net/npm/@anthropic-ai/mcp@0.1.0/dist/registry-schema.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.verygoodplugins/mcp-edd",
-  "display_name": "Easy Digital Downloads",
-  "description": "MCP server for Easy Digital Downloads REST API - access sales, customers, products, and analytics",
-  "repository": "https://github.com/verygoodplugins/mcp-edd",
-  "homepage": "https://github.com/verygoodplugins/mcp-edd",
-  "license": "GPL-3.0",
-  "authors": [
-    {
-      "name": "Very Good Plugins",
-      "url": "https://verygoodplugins.com"
-    }
-  ],
-  "keywords": [
-    "easy-digital-downloads",
-    "edd",
-    "ecommerce",
-    "wordpress",
-    "sales",
-    "analytics"
-  ],
-  "installation": {
-    "npm": {
-      "package": "@verygoodplugins/mcp-edd"
-    }
+  "title": "Easy Digital Downloads",
+  "description": "MCP server for Easy Digital Downloads REST API - sales, customers, products, analytics",
+  "version": "1.0.0",
+  "websiteUrl": "https://verygoodplugins.com/?utm_source=mcp-registry",
+  "repository": {
+    "url": "https://github.com/verygoodplugins/mcp-edd",
+    "source": "github"
   },
-  "configuration": {
-    "env": {
-      "EDD_API_URL": {
-        "description": "Your EDD store API URL (e.g., https://example.com/edd-api/)",
-        "required": true
-      },
-      "EDD_API_KEY": {
-        "description": "Your EDD API public key",
-        "required": true
-      },
-      "EDD_API_TOKEN": {
-        "description": "Your EDD API token",
-        "required": true
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@verygoodplugins/mcp-edd",
+      "version": "1.0.0",
+      "transport": {
+        "type": "stdio"
       }
     }
-  },
+  ],
   "tools": [
     {
       "name": "edd_list_products",
