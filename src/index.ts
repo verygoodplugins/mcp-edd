@@ -19,7 +19,7 @@ const edd = new EDDClient(config);
 
 // Create MCP server
 const server = new McpServer({
-  name: 'mcp-edd',
+  name: 'io.github.verygoodplugins/mcp-edd',
   version: packageJson.version,
 });
 
