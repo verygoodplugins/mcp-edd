@@ -1,6 +1,6 @@
 {
   "manifest_version": "0.2",
-  "name": "mcp-edd",
+  "name": "io.github.verygoodplugins/mcp-edd",
   "display_name": "Easy Digital Downloads",
   "version": "1.0.0",
   "description": "MCP server for Easy Digital Downloads - sales, customers, products, analytics",

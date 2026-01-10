@@ -20,7 +20,7 @@ MCP server for [Easy Digital Downloads](https://easydigitaldownloads.com/) REST 
 
 Download the Desktop Extension for one-click installation:
 
-**[Download mcp-edd.mcpb](https://github.com/verygoodplugins/mcp-edd/releases/latest)**
+**[Release page (download .mcpb asset)](https://github.com/verygoodplugins/mcp-edd/releases/latest)**
 
 Double-click the downloaded file to install. You'll be prompted for your API credentials.
 
