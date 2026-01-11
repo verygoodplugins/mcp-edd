@@ -9,6 +9,9 @@ export default tseslint.config(
   {
     files: ['src/**/*.ts'],
     rules: {
+      // MCP stdio servers must not write to stdout outside the protocol.
+      // Use console.error / console.warn for operational logs.
+      'no-console': ['error', { allow: ['error', 'warn'] }],
       // Allow unused vars prefixed with underscore
       '@typescript-eslint/no-unused-vars': [
         'error',

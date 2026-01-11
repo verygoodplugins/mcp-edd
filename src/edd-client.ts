@@ -18,6 +18,94 @@ export interface EDDClientConfig {
   apiToken: string;
 }
 
+export class EDDHttpError extends Error {
+  readonly url: string;
+  readonly status: number;
+  readonly statusText: string;
+  readonly contentType: string | null;
+  readonly serverHeader: string | null;
+  readonly bodySnippet: string;
+
+  constructor(options: {
+    url: string;
+    status: number;
+    statusText: string;
+    contentType: string | null;
+    serverHeader: string | null;
+    bodySnippet: string;
+    message: string;
+  }) {
+    super(options.message);
+    this.name = 'EDDHttpError';
+    this.url = options.url;
+    this.status = options.status;
+    this.statusText = options.statusText;
+    this.contentType = options.contentType;
+    this.serverHeader = options.serverHeader;
+    this.bodySnippet = options.bodySnippet;
+  }
+}
+
+function normalizeSnippet(text: string): string {
+  return text.replace(/\s+/g, ' ').trim().slice(0, 700);
+}
+
+function buildHelpfulHttpError(options: {
+  url: string;
+  status: number;
+  statusText: string;
+  contentType: string | null;
+  serverHeader: string | null;
+  bodySnippet: string;
+}): EDDHttpError {
+  const hints: string[] = [];
+
+  const isHtml =
+    (options.contentType || '').includes('text/html') ||
+    options.bodySnippet.startsWith('<!DOCTYPE') ||
+    options.bodySnippet.startsWith('<html') ||
+    options.bodySnippet.includes('<html');
+
+  const looksLikeCloudflare =
+    /cloudflare/i.test(options.serverHeader || '') || /cloudflare/i.test(options.bodySnippet);
+
+  if (options.status === 404) {
+    hints.push('404 usually means the Store API URL is wrong (it should end with `/edd-api/`).');
+  }
+
+  if (options.status === 401 || options.status === 403) {
+    hints.push('Auth error: check the API Key / Token are correct and enabled in EDD settings.');
+  }
+
+  if (isHtml) {
+    hints.push('Got HTML instead of JSON. This often indicates a WAF/proxy page or a wrong URL.');
+  }
+
+  if (looksLikeCloudflare) {
+    hints.push(
+      'Cloudflare detected. If you see a challenge/blocked page, allowlist the request or disable challenge for `/edd-api/*`.'
+    );
+  }
+
+  const headerBits = [
+    options.contentType ? `content-type=${options.contentType}` : null,
+    options.serverHeader ? `server=${options.serverHeader}` : null,
+  ].filter(Boolean);
+
+  const parts = [
+    `HTTP ${options.status}: ${options.statusText}`,
+    `URL: ${options.url}`,
+    headerBits.length ? `Headers: ${headerBits.join(', ')}` : null,
+    options.bodySnippet ? `Body: ${options.bodySnippet}` : null,
+    hints.length ? `Hints:\n- ${hints.join('\n- ')}` : null,
+  ].filter(Boolean);
+
+  return new EDDHttpError({
+    ...options,
+    message: parts.join('\n'),
+  });
+}
+
 /**
  * Client for the Easy Digital Downloads REST API.
  * Handles authentication and provides typed methods for all endpoints.
@@ -84,7 +172,23 @@ export class EDDClient {
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          const contentType = response.headers.get('content-type');
+          const serverHeader = response.headers.get('server');
+          let text = '';
+          try {
+            text = await response.text();
+          } catch {
+            // ignore
+          }
+
+          throw buildHelpfulHttpError({
+            url,
+            status: response.status,
+            statusText: response.statusText,
+            contentType,
+            serverHeader,
+            bodySnippet: normalizeSnippet(text),
+          });
         }
 
         const data = (await response.json()) as T & { error?: string };

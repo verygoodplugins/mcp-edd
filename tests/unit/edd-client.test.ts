@@ -14,7 +14,7 @@ describe('EDDClient', () => {
 
   beforeEach(() => {
     client = new EDDClient(config);
-    mockFetch.mockClear();
+    mockFetch.mockReset();
   });
 
   describe('URL building', () => {
@@ -271,17 +271,20 @@ describe('EDDClient', () => {
         ok: false,
         status: 401,
         statusText: 'Unauthorized',
-        json: async () => ({}),
+        headers: { get: () => null },
+        text: async () => '',
       }).mockResolvedValueOnce({
         ok: false,
         status: 401,
         statusText: 'Unauthorized',
-        json: async () => ({}),
+        headers: { get: () => null },
+        text: async () => '',
       }).mockResolvedValueOnce({
         ok: false,
         status: 401,
         statusText: 'Unauthorized',
-        json: async () => ({}),
+        headers: { get: () => null },
+        text: async () => '',
       });
 
       await expect(client.listCustomers()).rejects.toThrow('HTTP 401');
@@ -296,6 +299,61 @@ describe('EDDClient', () => {
 
       await expect(client.listCustomers()).rejects.toThrow('EDD API Error: Invalid API key');
     });
+
+    it('should include helpful hints for 404 HTML responses', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          statusText: 'Not Found',
+          headers: {
+            get: (key: string) =>
+              key.toLowerCase() === 'content-type'
+                ? 'text/html'
+                : key.toLowerCase() === 'server'
+                  ? 'cloudflare'
+                  : null,
+          },
+          text: async () => '<html><title>Not Found</title>cloudflare</html>',
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          statusText: 'Not Found',
+          headers: {
+            get: (key: string) =>
+              key.toLowerCase() === 'content-type'
+                ? 'text/html'
+                : key.toLowerCase() === 'server'
+                  ? 'cloudflare'
+                  : null,
+          },
+          text: async () => '<html><title>Not Found</title>cloudflare</html>',
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          statusText: 'Not Found',
+          headers: {
+            get: (key: string) =>
+              key.toLowerCase() === 'content-type'
+                ? 'text/html'
+                : key.toLowerCase() === 'server'
+                  ? 'cloudflare'
+                  : null,
+          },
+          text: async () => '<html><title>Not Found</title>cloudflare</html>',
+        });
+
+      try {
+        await client.listCustomers({ number: 1 });
+        throw new Error('Expected request to fail');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        expect(message).toMatch(/\/edd-api\//);
+        expect(message).toMatch(/Cloudflare/i);
+      }
+    }, 10000);
 
     it('should retry on failure with exponential backoff', async () => {
       mockFetch.mockClear();

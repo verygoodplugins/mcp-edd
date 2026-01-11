@@ -7,6 +7,10 @@ import { join } from 'path';
  * Searches in current directory, home directory, and common config locations.
  */
 export function loadEnv(): void {
+  // IMPORTANT: dotenv@17 prints an informational runtime log to stdout by default.
+  // For MCP stdio servers, stdout must be reserved exclusively for the protocol.
+  process.env.DOTENV_CONFIG_QUIET = 'true';
+
   const searchPaths = [
     '.env',
     join(process.cwd(), '.env'),
@@ -16,13 +20,13 @@ export function loadEnv(): void {
 
   for (const envPath of searchPaths) {
     if (existsSync(envPath)) {
-      config({ path: envPath });
+      config({ path: envPath, quiet: true });
       return;
     }
   }
 
   // Try default dotenv behavior
-  config();
+  config({ quiet: true });
 }
 
 /**
@@ -33,6 +37,45 @@ export interface EDDConfig {
   apiUrl: string;
   apiKey: string;
   apiToken: string;
+}
+
+export function normalizeEddApiUrl(rawUrl: string): string {
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(rawUrl);
+  } catch {
+    throw new Error(
+      'EDD_API_URL must be a valid URL including protocol (e.g., https://example.com/edd-api/)'
+    );
+  }
+
+  if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
+    throw new Error('EDD_API_URL must start with https:// or http://');
+  }
+
+  // Strip query / hash to avoid subtle mismatches like `...?foo=bar`.
+  parsedUrl.search = '';
+  parsedUrl.hash = '';
+
+  const originalPath = parsedUrl.pathname || '/';
+
+  // If someone pastes a specific endpoint like `/edd-api/products/`, normalize to the base `/edd-api/`.
+  const eddApiPrefixIndex = originalPath.indexOf('/edd-api/');
+  if (eddApiPrefixIndex !== -1) {
+    parsedUrl.pathname = originalPath.slice(0, eddApiPrefixIndex + '/edd-api/'.length);
+    return parsedUrl.toString();
+  }
+
+  if (originalPath === '/edd-api' || originalPath.endsWith('/edd-api')) {
+    parsedUrl.pathname = `${originalPath.replace(/\/+$/, '')}/`;
+    return parsedUrl.toString();
+  }
+
+  const basePath = originalPath.endsWith('/') ? originalPath : `${originalPath}/`;
+  parsedUrl.pathname = `${basePath}edd-api/`;
+
+  return parsedUrl.toString();
 }
 
 export function validateEnv(): EDDConfig {
@@ -57,8 +100,18 @@ export function validateEnv(): EDDConfig {
     );
   }
 
-  // Ensure URL ends with trailing slash
-  const normalizedUrl = apiUrl!.endsWith('/') ? apiUrl! : `${apiUrl}/`;
+  let normalizedUrl: string;
+  try {
+    normalizedUrl = normalizeEddApiUrl(apiUrl!);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `Invalid EDD_API_URL: ${message}\n\n` +
+        'Expected format:\n' +
+        '  https://your-site.com/edd-api/\n' +
+        '  https://your-site.com/subdir/edd-api/\n'
+    );
+  }
 
   return {
     apiUrl: normalizedUrl,

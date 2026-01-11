@@ -1,9 +1,10 @@
 #!/usr/bin/env node
+import './stdio.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { createRequire } from 'node:module';
 import { z } from 'zod';
-import { EDDClient } from './edd-client.js';
+import { EDDClient, EDDHttpError } from './edd-client.js';
 import { loadEnv, validateEnv } from './env.js';
 
 type PackageJson = { version: string };
@@ -429,6 +430,68 @@ server.registerTool(
         },
       ],
     };
+  }
+);
+
+// ============================================================================
+// Tool 13: Validate Connection
+// ============================================================================
+server.registerTool(
+  'edd_validate_connection',
+  {
+    title: 'Validate EDD Connection',
+    description:
+      'Validate Store API URL and credentials by making lightweight requests (products + one authenticated endpoint).',
+    inputSchema: {},
+  },
+  async () => {
+    try {
+      const products = await edd.listProducts({ number: 1 });
+      const sales = await edd.listSales({ number: 1 });
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                ok: true,
+                checks: {
+                  productsEndpoint: { ok: true, sampleCount: products.length },
+                  authenticatedEndpoint: { ok: true, sampleCount: sales.length },
+                },
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    } catch (error) {
+      const message =
+        error instanceof EDDHttpError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : String(error);
+
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text:
+              'Connection validation failed.\n\n' +
+              message +
+              '\n\n' +
+              'Common fixes:\n' +
+              '- Store API URL must be the EDD endpoint and typically ends with `/edd-api/`\n' +
+              '- Confirm Downloads → Settings → API is enabled and your key/token are correct\n' +
+              '- If the response is HTML/Cloudflare, allowlist `/edd-api/*`',
+          },
+        ],
+      };
+    }
   }
 );
 
