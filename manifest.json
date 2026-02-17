@@ -3,11 +3,20 @@
   "name": "io.github.verygoodplugins/mcp-edd",
   "display_name": "Easy Digital Downloads",
   "version": "1.0.0",
-  "description": "MCP server for Easy Digital Downloads - sales, customers, products, analytics",
+  "description": "Query your EDD store's sales, customers, products, and analytics from Claude",
+
+  "long_description": "Query your EDD store's sales, customers, and products directly from Claude. Get instant insights into revenue, customer behavior, and product performance.\n\n**What you can do:**\n\n• Sales Analytics - \"Show me this month's revenue\" or \"Compare Q4 sales to last year\"\n• Customer Insights - \"Find customers who purchased WP Fusion\" or \"Show top 10 by lifetime value\"\n• Product Data - \"List all products with their sales stats\" or \"Show pricing for premium tier\"\n• Discount Tracking - \"Which discount codes were used this week?\"\n\nBuilt by Very Good Plugins, the team behind WP Fusion - trusted by 10,000+ WordPress sites for CRM and marketing integrations.",
+
   "author": {
     "name": "Very Good Plugins",
-    "url": "https://verygoodplugins.com"
+    "email": "support@verygoodplugins.com",
+    "url": "https://verygoodplugins.com/?utm_source=mcpb"
   },
+
+  "icon": "assets/icon.png",
+
+  "screenshots": ["assets/screenshots/mcp-edd-setup.jpg"],
+
   "server": {
     "type": "node",
     "entry_point": "dist/index.js",
@@ -21,11 +30,12 @@
       }
     }
   },
+
   "user_config": {
     "edd_api_url": {
       "type": "string",
       "title": "Store API URL",
-      "description": "Your EDD store API endpoint (e.g., https://example.com/edd-api/)",
+      "description": "Your EDD store API endpoint (must end with /edd-api/, e.g., https://example.com/edd-api/)",
       "required": true
     },
     "edd_api_key": {
@@ -43,28 +53,82 @@
       "required": true
     }
   },
+
   "tools": [
-    { "name": "edd_list_products", "description": "List all products from the EDD store" },
-    { "name": "edd_get_product", "description": "Get detailed product info by ID" },
-    { "name": "edd_list_sales", "description": "List recent sales with optional filters" },
-    { "name": "edd_get_sale", "description": "Get sale by ID or purchase key" },
-    { "name": "edd_list_customers", "description": "List customers with purchase stats" },
-    { "name": "edd_get_customer", "description": "Get customer by ID or email" },
-    { "name": "edd_get_stats", "description": "Get earnings or sales statistics" },
-    { "name": "edd_get_stats_by_date", "description": "Get daily stats for a date range" },
-    { "name": "edd_get_stats_by_product", "description": "Get stats breakdown by product" },
-    { "name": "edd_list_discounts", "description": "List all discount codes" },
-    { "name": "edd_get_discount", "description": "Get discount details by ID" },
-    { "name": "edd_get_download_logs", "description": "Get file download history" }
+    {
+      "name": "edd_validate_connection",
+      "description": "Validate your Store API URL and credentials"
+    },
+    {
+      "name": "edd_list_products",
+      "description": "List all products from the EDD store with pricing and sales stats"
+    },
+    {
+      "name": "edd_get_product",
+      "description": "Get detailed product info including pricing tiers and license info"
+    },
+    {
+      "name": "edd_list_sales",
+      "description": "List recent sales with date, customer, and product filters"
+    },
+    { "name": "edd_get_sale", "description": "Get complete sale details by ID or purchase key" },
+    {
+      "name": "edd_list_customers",
+      "description": "List customers with purchase history and lifetime value"
+    },
+    { "name": "edd_get_customer", "description": "Get customer details by ID or email address" },
+    {
+      "name": "edd_get_stats",
+      "description": "Get earnings and sales totals with optional date filtering"
+    },
+    {
+      "name": "edd_get_stats_by_date",
+      "description": "Get daily revenue and sales breakdown for a date range"
+    },
+    {
+      "name": "edd_get_stats_by_product",
+      "description": "Get sales and revenue breakdown by product"
+    },
+    { "name": "edd_list_discounts", "description": "List all discount codes with usage stats" },
+    {
+      "name": "edd_get_discount",
+      "description": "Get discount details including usage limits and expiration"
+    },
+    {
+      "name": "edd_get_download_logs",
+      "description": "Get file download history for products or customers"
+    }
   ],
+
   "repository": {
     "type": "git",
     "url": "https://github.com/verygoodplugins/mcp-edd"
   },
-  "homepage": "https://github.com/verygoodplugins/mcp-edd",
+
+  "homepage": "https://verygoodplugins.com/mcp/?utm_source=mcpb",
+  "documentation": "https://github.com/verygoodplugins/mcp-edd#readme",
+  "support": "https://github.com/verygoodplugins/mcp-edd/issues",
+
+  "privacy_policies": ["https://verygoodplugins.com/privacy-policy/?utm_source=mcpb"],
+
   "license": "GPL-3.0",
-  "keywords": ["edd", "easy-digital-downloads", "ecommerce", "sales", "wordpress"],
+
+  "keywords": [
+    "mcp",
+    "claude",
+    "ai-tools",
+    "wordpress",
+    "easy-digital-downloads",
+    "edd",
+    "ecommerce",
+    "sales-analytics",
+    "customer-data",
+    "verygoodplugins",
+    "automation"
+  ],
+
   "compatibility": {
+    "claude_desktop": ">=1.0.0",
     "platforms": ["darwin", "win32", "linux"],
     "runtimes": {
       "node": ">=18.0.0"

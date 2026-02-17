@@ -14,7 +14,7 @@ describe('EDDClient', () => {
 
   beforeEach(() => {
     client = new EDDClient(config);
-    mockFetch.mockClear();
+    mockFetch.mockReset();
   });
 
   describe('URL building', () => {
@@ -169,6 +169,31 @@ describe('EDDClient', () => {
     });
   });
 
+  describe('getCustomerById', () => {
+    it('should fall back when customer param returns empty', async () => {
+      const mockCustomer = {
+        info: { id: '7673', user_id: '7673', customer_id: '6316', email: 'found@example.com' },
+        stats: { total_purchases: 5, total_spent: 1000 },
+      };
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ customers: [] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ customers: [mockCustomer] }),
+        });
+
+      const customer = await client.getCustomerById(7673);
+
+      expect(customer?.info.email).toBe('found@example.com');
+      expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('customer=7673'), expect.any(Object));
+      expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('id=7673'), expect.any(Object));
+    });
+  });
+
   describe('getCustomerByEmail', () => {
     it('should find customer by email', async () => {
       const mockCustomer = {
@@ -238,6 +263,25 @@ describe('EDDClient', () => {
       expect(stats['2025-01-02']).toBe(150);
       expect(stats['request_speed']).toBeUndefined();
     });
+
+    it('should coerce object values and drop out-of-range days', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          '2025-09-30': { earnings: '10.5' },
+          '2025-10-01': { earnings: '20.25' },
+          '2025-10-02': { earnings: 30 },
+          request_speed: 0.01,
+          totals: { earnings: '60.75' },
+        }),
+      });
+
+      const stats = await client.getStatsByDateRange('earnings', '20251001', '20251002');
+
+      expect(stats['2025-09-30']).toBeUndefined();
+      expect(stats['2025-10-01']).toBeCloseTo(20.25);
+      expect(stats['2025-10-02']).toBe(30);
+    });
   });
 
   describe('listDiscounts', () => {
@@ -265,23 +309,50 @@ describe('EDDClient', () => {
     });
   });
 
+  describe('getStatsByProduct', () => {
+    it('should coerce string values and support nested products object', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          products: {
+            'Product A': '12',
+            'Product B': { earnings: '34.5' },
+          },
+          request_speed: 0.01,
+        }),
+      });
+
+      const stats = await client.getStatsByProduct('earnings');
+
+      expect(stats).toEqual(
+        expect.arrayContaining([
+          { name: 'Product A', value: 12 },
+          { name: 'Product B', value: 34.5 },
+        ])
+      );
+    });
+  });
+
   describe('error handling', () => {
     it('should throw on HTTP errors', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 401,
         statusText: 'Unauthorized',
-        json: async () => ({}),
+        headers: { get: () => null },
+        text: async () => '',
       }).mockResolvedValueOnce({
         ok: false,
         status: 401,
         statusText: 'Unauthorized',
-        json: async () => ({}),
+        headers: { get: () => null },
+        text: async () => '',
       }).mockResolvedValueOnce({
         ok: false,
         status: 401,
         statusText: 'Unauthorized',
-        json: async () => ({}),
+        headers: { get: () => null },
+        text: async () => '',
       });
 
       await expect(client.listCustomers()).rejects.toThrow('HTTP 401');
@@ -296,6 +367,61 @@ describe('EDDClient', () => {
 
       await expect(client.listCustomers()).rejects.toThrow('EDD API Error: Invalid API key');
     });
+
+    it('should include helpful hints for 404 HTML responses', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          statusText: 'Not Found',
+          headers: {
+            get: (key: string) =>
+              key.toLowerCase() === 'content-type'
+                ? 'text/html'
+                : key.toLowerCase() === 'server'
+                  ? 'cloudflare'
+                  : null,
+          },
+          text: async () => '<html><title>Not Found</title>cloudflare</html>',
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          statusText: 'Not Found',
+          headers: {
+            get: (key: string) =>
+              key.toLowerCase() === 'content-type'
+                ? 'text/html'
+                : key.toLowerCase() === 'server'
+                  ? 'cloudflare'
+                  : null,
+          },
+          text: async () => '<html><title>Not Found</title>cloudflare</html>',
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 404,
+          statusText: 'Not Found',
+          headers: {
+            get: (key: string) =>
+              key.toLowerCase() === 'content-type'
+                ? 'text/html'
+                : key.toLowerCase() === 'server'
+                  ? 'cloudflare'
+                  : null,
+          },
+          text: async () => '<html><title>Not Found</title>cloudflare</html>',
+        });
+
+      try {
+        await client.listCustomers({ number: 1 });
+        throw new Error('Expected request to fail');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        expect(message).toMatch(/\/edd-api\//);
+        expect(message).toMatch(/Cloudflare/i);
+      }
+    }, 10000);
 
     it('should retry on failure with exponential backoff', async () => {
       mockFetch.mockClear();

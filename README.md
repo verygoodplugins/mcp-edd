@@ -75,6 +75,12 @@ Add to your `claude_desktop_config.json`:
 
 ## Available Tools
 
+### Setup / Diagnostics
+
+| Tool | Description |
+|------|-------------|
+| `edd_validate_connection` | Validate your Store API URL and credentials |
+
 ### Products
 
 | Tool | Description |
@@ -95,6 +101,8 @@ Add to your `claude_desktop_config.json`:
 |------|-------------|
 | `edd_list_customers` | List customers with purchase stats |
 | `edd_get_customer` | Get customer by ID or email |
+
+Note: `edd_list_customers` returns the EDD **customer** ID as `id` (usable with `edd_get_customer(customerId=...)`) and includes `userId` when available.
 
 ### Statistics
 

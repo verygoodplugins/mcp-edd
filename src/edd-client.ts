@@ -18,6 +18,94 @@ export interface EDDClientConfig {
   apiToken: string;
 }
 
+export class EDDHttpError extends Error {
+  readonly url: string;
+  readonly status: number;
+  readonly statusText: string;
+  readonly contentType: string | null;
+  readonly serverHeader: string | null;
+  readonly bodySnippet: string;
+
+  constructor(options: {
+    url: string;
+    status: number;
+    statusText: string;
+    contentType: string | null;
+    serverHeader: string | null;
+    bodySnippet: string;
+    message: string;
+  }) {
+    super(options.message);
+    this.name = 'EDDHttpError';
+    this.url = options.url;
+    this.status = options.status;
+    this.statusText = options.statusText;
+    this.contentType = options.contentType;
+    this.serverHeader = options.serverHeader;
+    this.bodySnippet = options.bodySnippet;
+  }
+}
+
+function normalizeSnippet(text: string): string {
+  return text.replace(/\s+/g, ' ').trim().slice(0, 700);
+}
+
+function buildHelpfulHttpError(options: {
+  url: string;
+  status: number;
+  statusText: string;
+  contentType: string | null;
+  serverHeader: string | null;
+  bodySnippet: string;
+}): EDDHttpError {
+  const hints: string[] = [];
+
+  const isHtml =
+    (options.contentType || '').includes('text/html') ||
+    options.bodySnippet.startsWith('<!DOCTYPE') ||
+    options.bodySnippet.startsWith('<html') ||
+    options.bodySnippet.includes('<html');
+
+  const looksLikeCloudflare =
+    /cloudflare/i.test(options.serverHeader || '') || /cloudflare/i.test(options.bodySnippet);
+
+  if (options.status === 404) {
+    hints.push('404 usually means the Store API URL is wrong (it should end with `/edd-api/`).');
+  }
+
+  if (options.status === 401 || options.status === 403) {
+    hints.push('Auth error: check the API Key / Token are correct and enabled in EDD settings.');
+  }
+
+  if (isHtml) {
+    hints.push('Got HTML instead of JSON. This often indicates a WAF/proxy page or a wrong URL.');
+  }
+
+  if (looksLikeCloudflare) {
+    hints.push(
+      'Cloudflare detected. If you see a challenge/blocked page, allowlist the request or disable challenge for `/edd-api/*`.'
+    );
+  }
+
+  const headerBits = [
+    options.contentType ? `content-type=${options.contentType}` : null,
+    options.serverHeader ? `server=${options.serverHeader}` : null,
+  ].filter(Boolean);
+
+  const parts = [
+    `HTTP ${options.status}: ${options.statusText}`,
+    `URL: ${options.url}`,
+    headerBits.length ? `Headers: ${headerBits.join(', ')}` : null,
+    options.bodySnippet ? `Body: ${options.bodySnippet}` : null,
+    hints.length ? `Hints:\n- ${hints.join('\n- ')}` : null,
+  ].filter(Boolean);
+
+  return new EDDHttpError({
+    ...options,
+    message: parts.join('\n'),
+  });
+}
+
 /**
  * Client for the Easy Digital Downloads REST API.
  * Handles authentication and provides typed methods for all endpoints.
@@ -84,7 +172,23 @@ export class EDDClient {
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          const contentType = response.headers.get('content-type');
+          const serverHeader = response.headers.get('server');
+          let text = '';
+          try {
+            text = await response.text();
+          } catch {
+            // ignore
+          }
+
+          throw buildHelpfulHttpError({
+            url,
+            status: response.status,
+            statusText: response.statusText,
+            contentType,
+            serverHeader,
+            bodySnippet: normalizeSnippet(text),
+          });
         }
 
         const data = (await response.json()) as T & { error?: string };
@@ -190,9 +294,23 @@ export class EDDClient {
    * Get a customer by ID.
    */
   async getCustomerById(customerId: number): Promise<Customer | null> {
-    const url = this.buildUrl('customers/', { customer: customerId });
-    const response = await this.request<CustomersResponse>(url);
-    return response.customers?.[0] || null;
+    // EDD API can be inconsistent about which ID appears in list responses.
+    // Prefer the `customer` query param, but fall back to other common variants.
+    const candidates: Array<Record<string, string | number>> = [
+      { customer: customerId },
+      { id: customerId },
+      { user_id: customerId },
+      { user: customerId },
+    ];
+
+    for (const params of candidates) {
+      const url = this.buildUrl('customers/', params);
+      const response = await this.request<CustomersResponse>(url);
+      const found = response.customers?.[0] || null;
+      if (found) return found;
+    }
+
+    return null;
   }
 
   /**
@@ -242,11 +360,37 @@ export class EDDClient {
       startdate: startDate,
       enddate: endDate,
     });
-    const response = await this.request<{ [key: string]: number }>(url);
+    const response = await this.request<Record<string, unknown>>(url);
 
-    // Remove non-date keys
-    const { request_speed: _speed, totals: _totals, ...dateData } = response as Record<string, number>;
-    return dateData;
+    const withinRange = (key: string): boolean => {
+      const normalized = key.includes('-') ? key.replace(/-/g, '') : key;
+      if (!/^\d{8}$/.test(normalized)) return false;
+      return normalized >= startDate && normalized <= endDate;
+    };
+
+    const extractValue = (value: unknown): number | null => {
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string') {
+        const parsed = Number.parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : null;
+      }
+      if (value && typeof value === 'object') {
+        const maybe = (value as Record<string, unknown>)[type];
+        return extractValue(maybe);
+      }
+      return null;
+    };
+
+    const daily: Record<string, number> = {};
+    for (const [key, value] of Object.entries(response)) {
+      if (key === 'request_speed' || key === 'totals') continue;
+      if (!withinRange(key)) continue;
+
+      const parsed = extractValue(value);
+      if (parsed !== null) daily[key] = parsed;
+    }
+
+    return daily;
   }
 
   /**
@@ -262,13 +406,42 @@ export class EDDClient {
     });
     const response = await this.request<Record<string, unknown>>(url);
 
-    // Parse the product stats response
-    const results: Array<{ name: string; value: number }> = [];
-    for (const [key, value] of Object.entries(response)) {
-      if (key !== 'request_speed' && typeof value === 'number') {
-        results.push({ name: key, value });
+    const extractNumber = (value: unknown): number | null => {
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string') {
+        const parsed = Number.parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : null;
       }
+      if (value && typeof value === 'object') {
+        const maybe = (value as Record<string, unknown>)[type];
+        return extractNumber(maybe);
+      }
+      return null;
+    };
+
+    const payload = (response.products as unknown) ?? response;
+    const results: Array<{ name: string; value: number }> = [];
+
+    if (Array.isArray(payload)) {
+      for (const item of payload) {
+        if (!item || typeof item !== 'object') continue;
+        const name = (item as Record<string, unknown>).name;
+        const value = (item as Record<string, unknown>).value;
+        if (typeof name !== 'string') continue;
+        const parsed = extractNumber(value);
+        if (parsed !== null) results.push({ name, value: parsed });
+      }
+      return results;
     }
+
+    if (!payload || typeof payload !== 'object') return results;
+
+    for (const [key, value] of Object.entries(payload as Record<string, unknown>)) {
+      if (key === 'request_speed' || key === 'products') continue;
+      const parsed = extractNumber(value);
+      if (parsed !== null) results.push({ name: key, value: parsed });
+    }
+
     return results;
   }
 

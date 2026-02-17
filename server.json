@@ -21,6 +21,10 @@
   ],
   "tools": [
     {
+      "name": "edd_validate_connection",
+      "description": "Validate Store API URL and credentials"
+    },
+    {
       "name": "edd_list_products",
       "description": "List all products from the EDD store"
     },
