@@ -35,13 +35,26 @@ describe('MCP stdio stream cleanliness', () => {
     });
 
     let stdout = '';
+    let stderr = '';
     child.stdout?.setEncoding('utf8');
     child.stdout?.on('data', (chunk) => {
       stdout += chunk;
     });
+    child.stderr?.setEncoding('utf8');
+    child.stderr?.on('data', (chunk) => {
+      stderr += chunk;
+    });
 
     try {
       await sleep(200);
+
+      if (child.exitCode !== null) {
+        throw new Error(
+          `Process exited early (code ${child.exitCode}) before stdout could be asserted.\n` +
+            `stderr: ${stderr.trim() || '(empty)'}`,
+        );
+      }
+
       expect(stdout.trim()).toBe('');
     } finally {
       await terminate(child);
