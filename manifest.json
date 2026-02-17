@@ -15,7 +15,7 @@
 
   "icon": "assets/icon.png",
 
-  "screenshots": ["assets/screenshots/sales-query.png", "assets/screenshots/customer-lookup.png"],
+  "screenshots": ["assets/screenshots/mcp-edd-setup.jpg"],
 
   "server": {
     "type": "node",

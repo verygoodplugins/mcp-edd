@@ -112,6 +112,12 @@ server.registerTool(
     });
 
     const summary = sales.map((s) => ({
+      discountCodes: (() => {
+        const raw = (s as unknown as { discount?: unknown }).discount ?? s.discounts ?? null;
+        if (Array.isArray(raw)) return raw.filter((v) => typeof v === 'string');
+        if (typeof raw === 'string' && raw.trim().length > 0) return [raw];
+        return null;
+      })(),
       id: s.ID,
       email: s.email,
       total: s.total,
@@ -119,7 +125,13 @@ server.registerTool(
       gateway: s.gateway,
       products: s.products.map((p) => p.name),
       hasLicenses: (s.licenses?.length ?? 0) > 0,
-      discounts: s.discounts || null,
+      // Back-compat: older clients look for `discounts`.
+      discounts: (() => {
+        const raw = (s as unknown as { discount?: unknown }).discount ?? s.discounts ?? null;
+        if (Array.isArray(raw)) return raw.filter((v) => typeof v === 'string');
+        if (typeof raw === 'string' && raw.trim().length > 0) return [raw];
+        return null;
+      })(),
     }));
 
     return {
@@ -163,8 +175,16 @@ server.registerTool(
       };
     }
 
+    const discountCodes = (() => {
+      const raw =
+        (sale as unknown as { discount?: unknown }).discount ?? sale.discounts ?? null;
+      if (Array.isArray(raw)) return raw.filter((v) => typeof v === 'string');
+      if (typeof raw === 'string' && raw.trim().length > 0) return [raw];
+      return null;
+    })();
+
     return {
-      content: [{ type: 'text', text: JSON.stringify(sale, null, 2) }],
+      content: [{ type: 'text', text: JSON.stringify({ ...sale, discountCodes }, null, 2) }],
     };
   }
 );
@@ -186,7 +206,9 @@ server.registerTool(
     const customers = await edd.listCustomers({ number: number ?? 10, page });
 
     const summary = customers.map((c) => ({
-      id: c.info.id,
+      // `id` is the EDD customer ID to use with edd_get_customer(customerId).
+      id: c.info.customer_id ?? c.info.id,
+      userId: c.info.user_id ?? null,
       email: c.info.email,
       name: c.info.display_name || `${c.info.first_name} ${c.info.last_name}`.trim(),
       totalPurchases: c.stats.total_purchases,
@@ -211,7 +233,8 @@ server.registerTool(
   'edd_get_customer',
   {
     title: 'Get EDD Customer',
-    description: 'Get detailed customer information by ID or email',
+    description:
+      'Get detailed customer information by EDD customerId (preferred) or email. If you only have a WordPress userId, try it as customerId (fallbacks applied).',
     inputSchema: {
       customerId: z.number().optional().describe('Customer ID to retrieve'),
       email: z.string().optional().describe('Customer email to retrieve'),

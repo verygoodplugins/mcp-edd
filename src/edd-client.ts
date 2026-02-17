@@ -294,9 +294,23 @@ export class EDDClient {
    * Get a customer by ID.
    */
   async getCustomerById(customerId: number): Promise<Customer | null> {
-    const url = this.buildUrl('customers/', { customer: customerId });
-    const response = await this.request<CustomersResponse>(url);
-    return response.customers?.[0] || null;
+    // EDD API can be inconsistent about which ID appears in list responses.
+    // Prefer the `customer` query param, but fall back to other common variants.
+    const candidates: Array<Record<string, string | number>> = [
+      { customer: customerId },
+      { id: customerId },
+      { user_id: customerId },
+      { user: customerId },
+    ];
+
+    for (const params of candidates) {
+      const url = this.buildUrl('customers/', params);
+      const response = await this.request<CustomersResponse>(url);
+      const found = response.customers?.[0] || null;
+      if (found) return found;
+    }
+
+    return null;
   }
 
   /**
@@ -346,11 +360,37 @@ export class EDDClient {
       startdate: startDate,
       enddate: endDate,
     });
-    const response = await this.request<{ [key: string]: number }>(url);
+    const response = await this.request<Record<string, unknown>>(url);
 
-    // Remove non-date keys
-    const { request_speed: _speed, totals: _totals, ...dateData } = response as Record<string, number>;
-    return dateData;
+    const withinRange = (key: string): boolean => {
+      const normalized = key.includes('-') ? key.replace(/-/g, '') : key;
+      if (!/^\d{8}$/.test(normalized)) return false;
+      return normalized >= startDate && normalized <= endDate;
+    };
+
+    const extractValue = (value: unknown): number | null => {
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string') {
+        const parsed = Number.parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : null;
+      }
+      if (value && typeof value === 'object') {
+        const maybe = (value as Record<string, unknown>)[type];
+        return extractValue(maybe);
+      }
+      return null;
+    };
+
+    const daily: Record<string, number> = {};
+    for (const [key, value] of Object.entries(response)) {
+      if (key === 'request_speed' || key === 'totals') continue;
+      if (!withinRange(key)) continue;
+
+      const parsed = extractValue(value);
+      if (parsed !== null) daily[key] = parsed;
+    }
+
+    return daily;
   }
 
   /**
@@ -366,13 +406,42 @@ export class EDDClient {
     });
     const response = await this.request<Record<string, unknown>>(url);
 
-    // Parse the product stats response
-    const results: Array<{ name: string; value: number }> = [];
-    for (const [key, value] of Object.entries(response)) {
-      if (key !== 'request_speed' && typeof value === 'number') {
-        results.push({ name: key, value });
+    const extractNumber = (value: unknown): number | null => {
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string') {
+        const parsed = Number.parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : null;
       }
+      if (value && typeof value === 'object') {
+        const maybe = (value as Record<string, unknown>)[type];
+        return extractNumber(maybe);
+      }
+      return null;
+    };
+
+    const payload = (response.products as unknown) ?? response;
+    const results: Array<{ name: string; value: number }> = [];
+
+    if (Array.isArray(payload)) {
+      for (const item of payload) {
+        if (!item || typeof item !== 'object') continue;
+        const name = (item as Record<string, unknown>).name;
+        const value = (item as Record<string, unknown>).value;
+        if (typeof name !== 'string') continue;
+        const parsed = extractNumber(value);
+        if (parsed !== null) results.push({ name, value: parsed });
+      }
+      return results;
     }
+
+    if (!payload || typeof payload !== 'object') return results;
+
+    for (const [key, value] of Object.entries(payload as Record<string, unknown>)) {
+      if (key === 'request_speed' || key === 'products') continue;
+      const parsed = extractNumber(value);
+      if (parsed !== null) results.push({ name: key, value: parsed });
+    }
+
     return results;
   }
 

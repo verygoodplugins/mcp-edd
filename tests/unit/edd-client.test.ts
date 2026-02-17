@@ -169,6 +169,31 @@ describe('EDDClient', () => {
     });
   });
 
+  describe('getCustomerById', () => {
+    it('should fall back when customer param returns empty', async () => {
+      const mockCustomer = {
+        info: { id: '7673', user_id: '7673', customer_id: '6316', email: 'found@example.com' },
+        stats: { total_purchases: 5, total_spent: 1000 },
+      };
+
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ customers: [] }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ customers: [mockCustomer] }),
+        });
+
+      const customer = await client.getCustomerById(7673);
+
+      expect(customer?.info.email).toBe('found@example.com');
+      expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('customer=7673'), expect.any(Object));
+      expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('id=7673'), expect.any(Object));
+    });
+  });
+
   describe('getCustomerByEmail', () => {
     it('should find customer by email', async () => {
       const mockCustomer = {
@@ -238,6 +263,25 @@ describe('EDDClient', () => {
       expect(stats['2025-01-02']).toBe(150);
       expect(stats['request_speed']).toBeUndefined();
     });
+
+    it('should coerce object values and drop out-of-range days', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          '2025-09-30': { earnings: '10.5' },
+          '2025-10-01': { earnings: '20.25' },
+          '2025-10-02': { earnings: 30 },
+          request_speed: 0.01,
+          totals: { earnings: '60.75' },
+        }),
+      });
+
+      const stats = await client.getStatsByDateRange('earnings', '20251001', '20251002');
+
+      expect(stats['2025-09-30']).toBeUndefined();
+      expect(stats['2025-10-01']).toBeCloseTo(20.25);
+      expect(stats['2025-10-02']).toBe(30);
+    });
   });
 
   describe('listDiscounts', () => {
@@ -262,6 +306,30 @@ describe('EDDClient', () => {
 
       expect(discounts).toHaveLength(1);
       expect(discounts[0].code).toBe('HOLIDAY25');
+    });
+  });
+
+  describe('getStatsByProduct', () => {
+    it('should coerce string values and support nested products object', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          products: {
+            'Product A': '12',
+            'Product B': { earnings: '34.5' },
+          },
+          request_speed: 0.01,
+        }),
+      });
+
+      const stats = await client.getStatsByProduct('earnings');
+
+      expect(stats).toEqual(
+        expect.arrayContaining([
+          { name: 'Product A', value: 12 },
+          { name: 'Product B', value: 34.5 },
+        ])
+      );
     });
   });
 

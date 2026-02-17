@@ -17,8 +17,11 @@ export function patchConsoleForMcpStdio(): void {
   if (globalObj[patchedKey]) return;
   globalObj[patchedKey] = true;
 
+  // eslint-disable-next-line no-console -- intentional redirect to stderr
   console.log = (...args: unknown[]) => writeStderr(null, args);
+  // eslint-disable-next-line no-console -- intentional redirect to stderr
   console.info = (...args: unknown[]) => writeStderr(null, args);
+  // eslint-disable-next-line no-console -- intentional redirect to stderr
   console.debug = (...args: unknown[]) => writeStderr(null, args);
 }
 
