@@ -6,17 +6,19 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function terminate(child: ReturnType<typeof spawn>): Promise<void> {
-  if (child.exitCode !== null) return;
+  if (child.exitCode !== null || child.signalCode !== null) return;
+
+  const exited = new Promise<void>((r) => child.once('exit', () => r()));
 
   child.kill('SIGTERM');
-  await Promise.race([
-    new Promise<void>((resolveExit) => child.once('exit', () => resolveExit())),
-    sleep(750),
+  const settled = await Promise.race([
+    exited.then(() => true as const),
+    sleep(750).then(() => false as const),
   ]);
 
-  if (child.exitCode === null) {
+  if (!settled) {
     child.kill('SIGKILL');
-    await new Promise<void>((resolveExit) => child.once('exit', () => resolveExit()));
+    await exited;
   }
 }
 
@@ -24,7 +26,7 @@ describe('MCP stdio stream cleanliness', () => {
   it('does not write to stdout on startup', async () => {
     const entry = resolve(process.cwd(), 'src/index.ts');
 
-    const child = spawn(process.execPath, ['--loader', 'tsx', entry], {
+    const child = spawn(process.execPath, ['--import', 'tsx', entry], {
       env: {
         ...process.env,
         EDD_API_URL: 'https://example.com/edd-api/',
@@ -59,6 +61,6 @@ describe('MCP stdio stream cleanliness', () => {
     } finally {
       await terminate(child);
     }
-  });
+  }, 10_000);
 });
 
