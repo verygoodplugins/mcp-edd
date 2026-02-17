@@ -2,27 +2,26 @@
   "manifest_version": "0.2",
   "name": "io.github.verygoodplugins/mcp-edd",
   "display_name": "Easy Digital Downloads",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Query your EDD store's sales, customers, products, and analytics from Claude",
-
   "long_description": "Query your EDD store's sales, customers, and products directly from Claude. Get instant insights into revenue, customer behavior, and product performance.\n\n**What you can do:**\n\n• Sales Analytics - \"Show me this month's revenue\" or \"Compare Q4 sales to last year\"\n• Customer Insights - \"Find customers who purchased WP Fusion\" or \"Show top 10 by lifetime value\"\n• Product Data - \"List all products with their sales stats\" or \"Show pricing for premium tier\"\n• Discount Tracking - \"Which discount codes were used this week?\"\n\nBuilt by Very Good Plugins, the team behind WP Fusion - trusted by 10,000+ WordPress sites for CRM and marketing integrations.",
-
   "author": {
     "name": "Very Good Plugins",
     "email": "support@verygoodplugins.com",
     "url": "https://verygoodplugins.com/?utm_source=mcpb"
   },
-
   "icon": "assets/icon.png",
-
-  "screenshots": ["assets/screenshots/mcp-edd-setup.jpg"],
-
+  "screenshots": [
+    "assets/screenshots/mcp-edd-setup.jpg"
+  ],
   "server": {
     "type": "node",
     "entry_point": "dist/index.js",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/dist/index.js"],
+      "args": [
+        "${__dirname}/dist/index.js"
+      ],
       "env": {
         "EDD_API_URL": "${user_config.edd_api_url}",
         "EDD_API_KEY": "${user_config.edd_api_key}",
@@ -30,7 +29,6 @@
       }
     }
   },
-
   "user_config": {
     "edd_api_url": {
       "type": "string",
@@ -53,7 +51,6 @@
       "required": true
     }
   },
-
   "tools": [
     {
       "name": "edd_validate_connection",
@@ -71,12 +68,18 @@
       "name": "edd_list_sales",
       "description": "List recent sales with date, customer, and product filters"
     },
-    { "name": "edd_get_sale", "description": "Get complete sale details by ID or purchase key" },
+    {
+      "name": "edd_get_sale",
+      "description": "Get complete sale details by ID or purchase key"
+    },
     {
       "name": "edd_list_customers",
       "description": "List customers with purchase history and lifetime value"
     },
-    { "name": "edd_get_customer", "description": "Get customer details by ID or email address" },
+    {
+      "name": "edd_get_customer",
+      "description": "Get customer details by ID or email address"
+    },
     {
       "name": "edd_get_stats",
       "description": "Get earnings and sales totals with optional date filtering"
@@ -89,7 +92,10 @@
       "name": "edd_get_stats_by_product",
       "description": "Get sales and revenue breakdown by product"
     },
-    { "name": "edd_list_discounts", "description": "List all discount codes with usage stats" },
+    {
+      "name": "edd_list_discounts",
+      "description": "List all discount codes with usage stats"
+    },
     {
       "name": "edd_get_discount",
       "description": "Get discount details including usage limits and expiration"
@@ -99,20 +105,17 @@
       "description": "Get file download history for products or customers"
     }
   ],
-
   "repository": {
     "type": "git",
     "url": "https://github.com/verygoodplugins/mcp-edd"
   },
-
   "homepage": "https://verygoodplugins.com/mcp/?utm_source=mcpb",
   "documentation": "https://github.com/verygoodplugins/mcp-edd#readme",
   "support": "https://github.com/verygoodplugins/mcp-edd/issues",
-
-  "privacy_policies": ["https://verygoodplugins.com/privacy-policy/?utm_source=mcpb"],
-
+  "privacy_policies": [
+    "https://verygoodplugins.com/privacy-policy/?utm_source=mcpb"
+  ],
   "license": "GPL-3.0",
-
   "keywords": [
     "mcp",
     "claude",
@@ -126,10 +129,13 @@
     "verygoodplugins",
     "automation"
   ],
-
   "compatibility": {
     "claude_desktop": ">=1.0.0",
-    "platforms": ["darwin", "win32", "linux"],
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ],
     "runtimes": {
       "node": ">=18.0.0"
     }
