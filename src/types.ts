@@ -17,8 +17,11 @@ export const ProductInfoSchema = z.object({
   content: z.string().optional(),
   excerpt: z.string().optional(),
   thumbnail: z.union([z.string(), z.boolean()]).optional(),
-  category: z.union([z.string(), z.union([z.boolean(), z.array(z.string())])]).optional(),
-  tags: z.union([z.string(), z.union([z.boolean(), z.array(z.string())])]).optional(),
+  // V1 returns strings/arrays of strings; V2 returns arrays of objects or false
+  category: z.union([z.string(), z.boolean(), z.array(z.union([z.string(), z.record(z.string(), z.unknown())]))]).optional(),
+  tags: z.union([z.string(), z.boolean(), z.array(z.union([z.string(), z.record(z.string(), z.unknown())]))]).optional(),
+  // V2 field
+  sku: z.string().optional(),
 });
 
 export const ProductPricingSchema = z.record(z.string(), z.string());
@@ -27,7 +30,7 @@ export const ProductLicensingSchema = z.object({
   enabled: z.boolean(),
   version: z.string().optional(),
   exp_unit: z.string().optional(),
-  exp_length: z.number().optional(),
+  exp_length: z.union([z.number(), z.string()]).optional(),
 });
 
 export const ProductSchema = z.object({
@@ -56,6 +59,9 @@ export const ProductSchema = z.object({
         name: z.string(),
         file: z.string(),
         condition: z.union([z.string(), z.number()]),
+        // V2 fields
+        index: z.union([z.string(), z.number()]).optional(),
+        attachment_id: z.union([z.string(), z.number()]).optional(),
       })
     )
     .optional(),
@@ -63,13 +69,15 @@ export const ProductSchema = z.object({
 });
 
 export const ProductsResponseSchema = z.object({
-  products: z.array(ProductSchema),
+  // V2 may return products as a numeric-keyed object or an array
+  products: z.union([z.array(ProductSchema), z.record(z.string(), ProductSchema)]),
   request_speed: z.number().optional(),
 });
 
 // Customer types
 export const CustomerInfoSchema = z.object({
-  id: z.string(),
+  // V1 returns `id`, V2 returns `customer_id` — both optional since either may be present
+  id: z.string().optional(),
   user_id: z.string().optional(),
   username: z.string().optional(),
   display_name: z.string().optional(),
@@ -77,6 +85,9 @@ export const CustomerInfoSchema = z.object({
   first_name: z.string().optional(),
   last_name: z.string().optional(),
   email: z.string(),
+  // V2 fields
+  additional_emails: z.array(z.string()).optional(),
+  date_created: z.string().optional(),
 });
 
 export const CustomerStatsSchema = z.object({
@@ -227,7 +238,10 @@ export type DownloadLogsResponse = z.infer<typeof DownloadLogsResponseSchema>;
 
 export const ListProductsInputSchema = z.object({
   product: z.number().optional().describe('Specific product ID to retrieve'),
-  number: z.number().optional().describe('Number of products to return (default: 10)'),
+  number: z.number().optional().describe('Number of products to return (default: all)'),
+  search: z.string().optional().describe('Search keyword to match against product titles and descriptions'),
+  category: z.string().optional().describe('Filter by category slug or ID'),
+  tag: z.string().optional().describe('Filter by tag slug or ID'),
 });
 
 export const GetProductInputSchema = z.object({
@@ -250,6 +264,9 @@ export const GetSaleInputSchema = z.object({
 export const ListCustomersInputSchema = z.object({
   number: z.number().optional().describe('Number of customers to return (default: 10)'),
   page: z.number().optional().describe('Page number for pagination'),
+  date: z.enum(['today', 'yesterday']).optional().describe('Filter by creation date preset'),
+  startDate: z.string().optional().describe('Start date in YYYYMMDD format (requires endDate)'),
+  endDate: z.string().optional().describe('End date in YYYYMMDD format (requires startDate)'),
 });
 
 export const GetCustomerInputSchema = z.object({
@@ -289,3 +306,25 @@ export const GetDownloadLogsInputSchema = z.object({
   productId: z.number().optional().describe('Filter by product ID'),
   customerId: z.number().optional().describe('Filter by customer ID'),
 });
+
+// V2 API Input Schemas
+
+export const GetDiscountByCodeInputSchema = z.object({
+  code: z.string().describe('The discount code to look up (case-insensitive)'),
+});
+
+export const ListActiveDiscountsInputSchema = z.object({
+  number: z.number().optional().describe('Number of discounts to return'),
+});
+
+export const GetStatsByPresetInputSchema = z.object({
+  type: z.enum(['sales', 'earnings']).describe('Type of stats: sales (count) or earnings (revenue)'),
+  date: z.enum([
+    'today', 'yesterday',
+    'this_week', 'last_week',
+    'this_month', 'last_month',
+    'this_quarter', 'last_quarter',
+    'this_year', 'last_year',
+  ]).describe('Predefined date filter'),
+});
+
