@@ -142,21 +142,6 @@ export class EDDClient {
   }
 
   /**
-   * Build public URL (no auth required, e.g., products endpoint).
-   */
-  private buildPublicUrl(endpoint: string, params: Record<string, string | number | undefined> = {}): string {
-    const url = new URL(endpoint, this.apiUrl);
-
-    for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined) {
-        url.searchParams.set(key, String(value));
-      }
-    }
-
-    return url.toString();
-  }
-
-  /**
    * Make HTTP request with retry logic.
    */
   private async request<T>(url: string, retries = 3): Promise<T> {
@@ -194,7 +179,8 @@ export class EDDClient {
         const data = (await response.json()) as T & { error?: string };
 
         // Check for API-level errors
-        if (data.error) {
+        // "No X found!" messages are not real errors — just empty results
+        if (data.error && !/^No \w+ found!?$/i.test(data.error)) {
           throw new Error(`EDD API Error: ${data.error}`);
         }
 
@@ -213,16 +199,37 @@ export class EDDClient {
   }
 
   // ===========================================================================
-  // Products Endpoints (Public - no auth required)
+  // Products Endpoints (V2 API)
   // ===========================================================================
 
   /**
-   * List all products.
+   * List products. Always uses V2 API for richer response data (sku, category/tag
+   * objects, file index/attachment_id). Supports search, category, and tag filtering.
+   * Note: V2 products endpoint doesn't require auth for public products, but
+   * including auth doesn't hurt and allows access to non-public products.
    */
-  async listProducts(options: { number?: number; product?: number } = {}): Promise<Product[]> {
-    const url = this.buildPublicUrl('products/', options);
+  async listProducts(options: {
+    number?: number;
+    product?: number;
+    search?: string;
+    category?: string;
+    tag?: string;
+  } = {}): Promise<Product[]> {
+    const params: Record<string, string | number | undefined> = {
+      number: options.number,
+      product: options.product,
+    };
+    if (options.search) params.s = options.search;
+    if (options.category) params.category = options.category;
+    if (options.tag) params.tag = options.tag;
+
+    const url = this.buildV2Url('products/', params);
     const response = await this.request<ProductsResponse>(url);
-    return response.products;
+    // V2 may return products as a numeric-keyed object instead of an array
+    const raw = response.products;
+    if (Array.isArray(raw)) return raw;
+    if (raw && typeof raw === 'object') return Object.values(raw);
+    return [];
   }
 
   /**
@@ -231,6 +238,28 @@ export class EDDClient {
   async getProduct(productId: number): Promise<Product | null> {
     const products = await this.listProducts({ product: productId });
     return products[0] || null;
+  }
+
+  /**
+   * Build a V2 API URL. Inserts `v2/` before the endpoint in the API path.
+   */
+  private buildV2Url(endpoint: string, params: Record<string, string | number | undefined> = {}): string {
+    // apiUrl is like https://example.com/edd-api/
+    // We need https://example.com/edd-api/v2/{endpoint}/
+    const base = this.apiUrl.replace(/\/$/, '');
+    const v2Base = `${base}/v2/`;
+    const url = new URL(endpoint, v2Base);
+
+    url.searchParams.set('key', this.apiKey);
+    url.searchParams.set('token', this.apiToken);
+
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined) {
+        url.searchParams.set(key, String(value));
+      }
+    }
+
+    return url.toString();
   }
 
   // ===========================================================================
@@ -278,46 +307,53 @@ export class EDDClient {
   }
 
   // ===========================================================================
-  // Customers Endpoints (Authenticated)
+  // Customers Endpoints (V2 API)
   // ===========================================================================
 
   /**
-   * List customers with pagination.
+   * List customers with pagination. Always uses V2 API for richer response data
+   * (date_created, additional_emails). Optionally filter by date preset or date range.
    */
-  async listCustomers(options: { number?: number; page?: number } = {}): Promise<Customer[]> {
-    const url = this.buildUrl('customers/', options);
+  async listCustomers(options: {
+    number?: number;
+    page?: number;
+    date?: string;
+    startdate?: string;
+    enddate?: string;
+  } = {}): Promise<Customer[]> {
+    const params: Record<string, string | number | undefined> = {
+      number: options.number,
+      page: options.page,
+    };
+
+    if (options.startdate && options.enddate) {
+      params.date = 'range';
+      params.startdate = options.startdate;
+      params.enddate = options.enddate;
+    } else if (options.date) {
+      params.date = options.date;
+    }
+
+    const url = this.buildV2Url('customers/', params);
     const response = await this.request<CustomersResponse>(url);
     return response.customers || [];
   }
 
   /**
-   * Get a customer by ID.
+   * Get a customer by ID or email (V2 API).
+   * Uses the V2 `&customer={identifier}` param which accepts both IDs and emails.
    */
   async getCustomerById(customerId: number): Promise<Customer | null> {
-    // EDD API can be inconsistent about which ID appears in list responses.
-    // Prefer the `customer` query param, but fall back to other common variants.
-    const candidates: Array<Record<string, string | number>> = [
-      { customer: customerId },
-      { id: customerId },
-      { user_id: customerId },
-      { user: customerId },
-    ];
-
-    for (const params of candidates) {
-      const url = this.buildUrl('customers/', params);
-      const response = await this.request<CustomersResponse>(url);
-      const found = response.customers?.[0] || null;
-      if (found) return found;
-    }
-
-    return null;
+    const url = this.buildV2Url('customers/', { customer: customerId });
+    const response = await this.request<CustomersResponse>(url);
+    return response.customers?.[0] || null;
   }
 
   /**
-   * Get a customer by email.
+   * Get a customer by email (V2 API).
    */
   async getCustomerByEmail(email: string): Promise<Customer | null> {
-    const url = this.buildUrl('customers/', { email });
+    const url = this.buildV2Url('customers/', { customer: email });
     const response = await this.request<CustomersResponse>(url);
     return response.customers?.[0] || null;
   }
@@ -445,6 +481,25 @@ export class EDDClient {
     return results;
   }
 
+  /**
+   * Get stats with a preset date filter (today, yesterday, this_week, etc.).
+   */
+  async getStatsByPreset(
+    type: 'sales' | 'earnings',
+    date: string
+  ): Promise<StatsResponse['stats']> {
+    const url = this.buildUrl('stats/', { type, date });
+    const response = await this.request<Record<string, unknown>>(url);
+
+    if ('stats' in response && response.stats) {
+      return response.stats as StatsResponse['stats'];
+    }
+
+    return {
+      [type]: response[type],
+    } as StatsResponse['stats'];
+  }
+
   // ===========================================================================
   // Discounts Endpoints (Authenticated)
   // ===========================================================================
@@ -465,6 +520,30 @@ export class EDDClient {
     const url = this.buildUrl('discounts/', { discount: discountId });
     const response = await this.request<DiscountsResponse>(url);
     return response.discounts?.[0] || null;
+  }
+
+  /**
+   * Get a discount by its code (client-side filter).
+   * Note: The EDD API does not support server-side filtering by code,
+   * so this fetches all discounts and filters locally.
+   */
+  async getDiscountByCode(code: string): Promise<Discount | null> {
+    const discounts = await this.listDiscounts({ number: -1 });
+    const match = discounts.find(
+      (d) => d.code.toLowerCase() === code.toLowerCase()
+    );
+    return match || null;
+  }
+
+  /**
+   * List only active discounts (client-side filter).
+   * Note: Fetches `number` discounts then filters to active ones, so the
+   * returned count may be less than requested. Use `number: -1` to fetch
+   * all discounts first if you need an exact count of active discounts.
+   */
+  async listActiveDiscounts(options: { number?: number } = {}): Promise<Discount[]> {
+    const discounts = await this.listDiscounts(options);
+    return discounts.filter((d) => d.status === 'active');
   }
 
   // ===========================================================================
