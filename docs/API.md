@@ -548,7 +548,7 @@ The server provides detailed diagnostic information including:
 
 ### Retry Logic
 
-The server makes up to 3 total attempts (1 initial + 2 retries) with exponential backoff (1s, 2s, 4s).
+The server makes up to 3 total attempts (1 initial + 2 retries) with exponential backoff delays of 1s and 2s between attempts.
 
 ---
 

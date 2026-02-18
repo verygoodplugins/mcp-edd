@@ -190,7 +190,7 @@ export class EDDClient {
         lastError = error instanceof Error ? error : new Error(String(error));
 
         if (attempt < retries) {
-          // Exponential backoff: 1s, 2s, 4s
+          // Exponential backoff: 1s, 2s
           await new Promise((resolve) => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
         }
       }
@@ -478,14 +478,14 @@ export class EDDClient {
   /**
    * Normalize the varied stats response formats from the EDD API.
    */
+  /**
+   * Normalize the direct stats response format from the EDD API.
+   * EDD returns `{ earnings: {...} }` or `{ sales: {...} }` directly.
+   */
   private normalizeStatsResponse(
     response: Record<string, unknown>,
     type: 'sales' | 'earnings'
   ): StatsResponse['stats'] {
-    if ('stats' in response && response.stats) {
-      return response.stats as StatsResponse['stats'];
-    }
-    // Direct response format: { earnings: {...}, request_speed: ... }
     return { [type]: response[type] } as StatsResponse['stats'];
   }
 

@@ -271,9 +271,8 @@ describe('EDDClient', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          stats: {
-            earnings: { current_month: 5000, last_month: 4500, totals: 100000 },
-          },
+          earnings: { current_month: 5000, last_month: 4500, totals: 100000 },
+          request_speed: 0.05,
         }),
       });
 
@@ -287,9 +286,8 @@ describe('EDDClient', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          stats: {
-            sales: { current_month: 50, last_month: 45, totals: 1000 },
-          },
+          sales: { current_month: 50, last_month: 45, totals: 1000 },
+          request_speed: 0.03,
         }),
       });
 
@@ -661,9 +659,8 @@ describe('EDDClient', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          stats: {
-            earnings: { current_month: 5000, totals: 100000 },
-          },
+          earnings: { current_month: 5000, totals: 100000 },
+          request_speed: 0.04,
         }),
       });
 
