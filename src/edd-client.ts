@@ -180,7 +180,8 @@ export class EDDClient {
 
         // Check for API-level errors
         // "No X found!" messages are not real errors — just empty results
-        if (data.error && !/^No \w+ found!?$/i.test(data.error)) {
+        // Use [\w\s]+ to match multi-word entities like "download logs"
+        if (data.error && !/^No [\w\s]+ found!?$/i.test(data.error)) {
           throw new Error(`EDD API Error: ${data.error}`);
         }
 
@@ -196,6 +197,28 @@ export class EDDClient {
     }
 
     throw lastError || new Error('Request failed after retries');
+  }
+
+  /**
+   * Build a V2 API URL. Inserts `v2/` before the endpoint in the API path.
+   */
+  private buildV2Url(endpoint: string, params: Record<string, string | number | undefined> = {}): string {
+    // apiUrl is like https://example.com/edd-api/
+    // We need https://example.com/edd-api/v2/{endpoint}/
+    const base = this.apiUrl.replace(/\/$/, '');
+    const v2Base = `${base}/v2/`;
+    const url = new URL(endpoint, v2Base);
+
+    url.searchParams.set('key', this.apiKey);
+    url.searchParams.set('token', this.apiToken);
+
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined) {
+        url.searchParams.set(key, String(value));
+      }
+    }
+
+    return url.toString();
   }
 
   // ===========================================================================
@@ -238,28 +261,6 @@ export class EDDClient {
   async getProduct(productId: number): Promise<Product | null> {
     const products = await this.listProducts({ product: productId });
     return products[0] || null;
-  }
-
-  /**
-   * Build a V2 API URL. Inserts `v2/` before the endpoint in the API path.
-   */
-  private buildV2Url(endpoint: string, params: Record<string, string | number | undefined> = {}): string {
-    // apiUrl is like https://example.com/edd-api/
-    // We need https://example.com/edd-api/v2/{endpoint}/
-    const base = this.apiUrl.replace(/\/$/, '');
-    const v2Base = `${base}/v2/`;
-    const url = new URL(endpoint, v2Base);
-
-    url.searchParams.set('key', this.apiKey);
-    url.searchParams.set('token', this.apiToken);
-
-    for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined) {
-        url.searchParams.set(key, String(value));
-      }
-    }
-
-    return url.toString();
   }
 
   // ===========================================================================
@@ -364,22 +365,15 @@ export class EDDClient {
 
   /**
    * Get general stats (current month, last month, totals).
+   * Optionally pass a date preset (today, yesterday, this_week, etc.) to filter.
    */
-  async getStats(type: 'sales' | 'earnings'): Promise<StatsResponse['stats']> {
-    const url = this.buildUrl('stats/', { type });
-    // API returns stats directly without wrapper
+  async getStats(type: 'sales' | 'earnings', date?: string): Promise<StatsResponse['stats']> {
+    const params: Record<string, string | number | undefined> = { type };
+    if (date) params.date = date;
+    const url = this.buildUrl('stats/', params);
     const response = await this.request<Record<string, unknown>>(url);
 
-    // Handle both response formats
-    if ('stats' in response && response.stats) {
-      return response.stats as StatsResponse['stats'];
-    }
-
-    // Direct response format: { earnings: {...}, request_speed: ... }
-    // or { sales: {...}, request_speed: ... }
-    return {
-      [type]: response[type],
-    } as StatsResponse['stats'];
+    return this.normalizeStatsResponse(response, type);
   }
 
   /**
@@ -482,22 +476,17 @@ export class EDDClient {
   }
 
   /**
-   * Get stats with a preset date filter (today, yesterday, this_week, etc.).
+   * Normalize the varied stats response formats from the EDD API.
    */
-  async getStatsByPreset(
-    type: 'sales' | 'earnings',
-    date: string
-  ): Promise<StatsResponse['stats']> {
-    const url = this.buildUrl('stats/', { type, date });
-    const response = await this.request<Record<string, unknown>>(url);
-
+  private normalizeStatsResponse(
+    response: Record<string, unknown>,
+    type: 'sales' | 'earnings'
+  ): StatsResponse['stats'] {
     if ('stats' in response && response.stats) {
       return response.stats as StatsResponse['stats'];
     }
-
-    return {
-      [type]: response[type],
-    } as StatsResponse['stats'];
+    // Direct response format: { earnings: {...}, request_speed: ... }
+    return { [type]: response[type] } as StatsResponse['stats'];
   }
 
   // ===========================================================================

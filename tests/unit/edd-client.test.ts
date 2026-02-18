@@ -434,6 +434,17 @@ describe('EDDClient', () => {
       expect(customers).toEqual([]);
     });
 
+    it('should treat multi-word "No X found!" as empty results', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ error: 'No download logs found!' }),
+      });
+
+      const response = await client.getDownloadLogs();
+
+      expect(response).toEqual([]);
+    });
+
     it('should include helpful hints for 404 HTML responses', async () => {
       mockFetch
         .mockResolvedValueOnce({
@@ -645,7 +656,7 @@ describe('EDDClient', () => {
     });
   });
 
-  describe('getStatsByPreset', () => {
+  describe('getStats with date preset', () => {
     it('should pass date preset to stats endpoint', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -656,7 +667,7 @@ describe('EDDClient', () => {
         }),
       });
 
-      const stats = await client.getStatsByPreset('earnings', 'this_month');
+      const stats = await client.getStats('earnings', 'this_month');
 
       const calledUrl = mockFetch.mock.calls[0][0] as string;
       expect(calledUrl).toContain('date=this_month');

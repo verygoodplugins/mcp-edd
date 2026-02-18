@@ -571,7 +571,7 @@ server.registerTool(
 );
 
 // ============================================================================
-// Tool 16: List Active Discounts
+// Tool 15: List Active Discounts
 // ============================================================================
 server.registerTool(
   'edd_list_active_discounts',
@@ -609,7 +609,7 @@ server.registerTool(
 );
 
 // ============================================================================
-// Tool 17: Get Stats by Preset
+// Tool 16: Get Stats by Preset
 // ============================================================================
 server.registerTool(
   'edd_get_stats_by_preset',
@@ -629,7 +629,7 @@ server.registerTool(
     },
   },
   async ({ type, date }) => {
-    const stats = await edd.getStatsByPreset(type, date);
+    const stats = await edd.getStats(type, date);
 
     return {
       content: [

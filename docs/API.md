@@ -548,7 +548,7 @@ The server provides detailed diagnostic information including:
 
 ### Retry Logic
 
-The server automatically retries failed requests up to 3 times with exponential backoff (1s, 2s, 4s).
+The server makes up to 3 total attempts (1 initial + 2 retries) with exponential backoff (1s, 2s, 4s).
 
 ---
 
