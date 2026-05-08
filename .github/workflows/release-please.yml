@@ -38,7 +38,7 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         id: release
         with:
           manifest-file: ".release-please-manifest.json"
@@ -87,7 +87,7 @@ jobs:
       - run: npm run build:extension
 
       - name: Upload Extension to Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.release-please.outputs.tag_name }}
           files: "*.mcpb"
