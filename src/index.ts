@@ -31,18 +31,25 @@ server.registerTool(
   'edd_list_products',
   {
     title: 'List EDD Products',
-    description: 'List all products from the Easy Digital Downloads store with pricing and stats',
+    description:
+      'List products from the Easy Digital Downloads store with pricing, stats, and SKU. ' +
+      'Optionally search by keyword, filter by category slug/ID, or filter by tag slug/ID. ' +
+      'Category and tag filters can be combined.',
     inputSchema: {
       number: z.number().optional().describe('Number of products to return (default: all)'),
+      search: z.string().optional().describe('Search keyword to match against product titles and descriptions'),
+      category: z.string().optional().describe('Filter by category slug or ID'),
+      tag: z.string().optional().describe('Filter by tag slug or ID'),
     },
   },
-  async ({ number }) => {
-    const products = await edd.listProducts({ number });
+  async ({ number, search, category, tag }) => {
+    const products = await edd.listProducts({ number, search, category, tag });
 
     const summary = products.map((p) => ({
       id: p.info.id,
       title: p.info.title,
       status: p.info.status,
+      sku: p.info.sku ?? null,
       pricing: p.pricing,
       licensing: p.licensing?.enabled ? `v${p.licensing.version}` : null,
     }));
@@ -196,23 +203,41 @@ server.registerTool(
   'edd_list_customers',
   {
     title: 'List EDD Customers',
-    description: 'List customers with their purchase statistics',
+    description:
+      'List customers with their purchase statistics (date_created, additional_emails included). ' +
+      'Optionally filter by creation date preset (today/yesterday) or a custom date range in YYYYMMDD format.',
     inputSchema: {
       number: z.number().optional().describe('Number of customers to return (default: 10)'),
       page: z.number().optional().describe('Page number for pagination'),
+      date: z.enum(['today', 'yesterday']).optional().describe('Filter by creation date preset'),
+      startDate: z.string().optional().describe('Start date in YYYYMMDD format (requires endDate)'),
+      endDate: z.string().optional().describe('End date in YYYYMMDD format (requires startDate)'),
     },
   },
-  async ({ number, page }) => {
-    const customers = await edd.listCustomers({ number: number ?? 10, page });
+  async ({ number, page, date, startDate, endDate }) => {
+    if ((startDate && !endDate) || (!startDate && endDate)) {
+      return {
+        content: [{ type: 'text', text: 'Error: Both startDate and endDate are required when using date range filtering' }],
+      };
+    }
+
+    const customers = await edd.listCustomers({
+      number: number ?? 10,
+      page,
+      date,
+      startdate: startDate,
+      enddate: endDate,
+    });
 
     const summary = customers.map((c) => ({
       // `id` is the EDD customer ID to use with edd_get_customer(customerId).
       id: c.info.customer_id ?? c.info.id,
       userId: c.info.user_id ?? null,
       email: c.info.email,
-      name: c.info.display_name || `${c.info.first_name} ${c.info.last_name}`.trim(),
+      name: c.info.display_name || `${c.info.first_name ?? ''} ${c.info.last_name ?? ''}`.trim(),
       totalPurchases: c.stats.total_purchases,
       totalSpent: c.stats.total_spent,
+      totalDownloads: c.stats.total_downloads,
     }));
 
     return {
@@ -234,7 +259,7 @@ server.registerTool(
   {
     title: 'Get EDD Customer',
     description:
-      'Get detailed customer information by EDD customerId (preferred) or email. If you only have a WordPress userId, try it as customerId (fallbacks applied).',
+      'Get detailed customer information by EDD customerId or email. Returns full customer data including date_created and additional_emails.',
     inputSchema: {
       customerId: z.number().optional().describe('Customer ID to retrieve'),
       email: z.string().optional().describe('Customer email to retrieve'),
@@ -515,6 +540,105 @@ server.registerTool(
         ],
       };
     }
+  }
+);
+
+// ============================================================================
+// Tool 14: Get Discount by Code
+// ============================================================================
+server.registerTool(
+  'edd_get_discount_by_code',
+  {
+    title: 'Get EDD Discount by Code',
+    description: 'Look up a discount by its code string (case-insensitive)',
+    inputSchema: {
+      code: z.string().describe('The discount code to look up (case-insensitive)'),
+    },
+  },
+  async ({ code }) => {
+    const discount = await edd.getDiscountByCode(code);
+
+    if (!discount) {
+      return {
+        content: [{ type: 'text', text: `Discount with code "${code}" not found` }],
+      };
+    }
+
+    return {
+      content: [{ type: 'text', text: JSON.stringify(discount, null, 2) }],
+    };
+  }
+);
+
+// ============================================================================
+// Tool 15: List Active Discounts
+// ============================================================================
+server.registerTool(
+  'edd_list_active_discounts',
+  {
+    title: 'List Active EDD Discounts',
+    description: 'List only currently active discount codes, filtering out expired and disabled ones',
+    inputSchema: {
+      number: z.number().optional().describe('Number of discounts to return'),
+    },
+  },
+  async ({ number }) => {
+    const discounts = await edd.listActiveDiscounts({ number });
+
+    const summary = discounts.map((d) => ({
+      id: d.ID,
+      code: d.code,
+      name: d.name,
+      amount: d.amount,
+      type: d.type,
+      uses: d.uses,
+      maxUses: d.max_uses,
+      startDate: d.start_date,
+      expDate: d.exp_date,
+    }));
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({ count: discounts.length, discounts: summary }, null, 2),
+        },
+      ],
+    };
+  }
+);
+
+// ============================================================================
+// Tool 16: Get Stats by Preset
+// ============================================================================
+server.registerTool(
+  'edd_get_stats_by_preset',
+  {
+    title: 'Get EDD Stats by Date Preset',
+    description:
+      'Get earnings or sales statistics using a preset date filter (today, yesterday, this_week, this_month, etc.)',
+    inputSchema: {
+      type: z.enum(['sales', 'earnings']).describe('Type of stats: sales (count) or earnings (revenue)'),
+      date: z.enum([
+        'today', 'yesterday',
+        'this_week', 'last_week',
+        'this_month', 'last_month',
+        'this_quarter', 'last_quarter',
+        'this_year', 'last_year',
+      ]).describe('Predefined date filter'),
+    },
+  },
+  async ({ type, date }) => {
+    const stats = await edd.getStats(type, date);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({ type, date, stats }, null, 2),
+        },
+      ],
+    };
   }
 );
 
