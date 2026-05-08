@@ -3,7 +3,7 @@
   "name": "io.github.verygoodplugins/mcp-edd",
   "title": "Easy Digital Downloads",
   "description": "MCP server for Easy Digital Downloads REST API - sales, customers, products, analytics",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "websiteUrl": "https://verygoodplugins.com/?utm_source=mcp-registry",
   "repository": {
     "url": "https://github.com/verygoodplugins/mcp-edd",
