@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "io.github.verygoodplugins/mcp-edd",
   "display_name": "Easy Digital Downloads",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Query your EDD store's sales, customers, products, and analytics from Claude",
   "long_description": "Query your EDD store's sales, customers, and products directly from Claude. Get instant insights into revenue, customer behavior, and product performance.\n\n**What you can do:**\n\n• Sales Analytics - \"Show me this month's revenue\" or \"Compare Q4 sales to last year\"\n• Customer Insights - \"Find customers who purchased WP Fusion\" or \"Show top 10 by lifetime value\"\n• Product Data - \"List all products with their sales stats\" or \"Show pricing for premium tier\"\n• Discount Tracking - \"Which discount codes were used this week?\"\n\nBuilt by Very Good Plugins, the team behind WP Fusion - trusted by 10,000+ WordPress sites for CRM and marketing integrations.",
   "author": {
