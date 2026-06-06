@@ -4,7 +4,7 @@ Development guidance for coding agents (Claude Code, Cursor, Codex, and others) 
 
 ## Project Overview
 
-MCP server for the Easy Digital Downloads REST API. Registers 16 tools for accessing EDD store data including products, sales, customers, statistics, discounts, and download logs, plus a connection validator.
+MCP server for the Easy Digital Downloads REST API. Registers 16 tools for accessing EDD store data including products, sales, customers, statistics, discounts, and download logs, one of which is a connection validator (`edd_validate_connection`).
 
 ## Architecture
 
