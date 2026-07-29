@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import { z } from 'zod';
 import { EDDClient, EDDHttpError } from './edd-client.js';
 import { loadEnv, validateEnv } from './env.js';
+import { installStdioLifecycle } from './lifecycle.js';
 
 type PackageJson = { version: string };
 const require = createRequire(import.meta.url);
@@ -647,6 +648,11 @@ server.registerTool(
 // ============================================================================
 async function main() {
   const transport = new StdioServerTransport();
+  installStdioLifecycle({
+    transport,
+    onCloseAssignable: server.server,
+    envName: 'EDD_PARENT_WATCHDOG_MS',
+  });
   await server.connect(transport);
 }
 
