@@ -647,11 +647,14 @@ server.registerTool(
 // Start Server
 // ============================================================================
 async function main() {
+  // Capture before any await — process.ppid is dynamic.
+  const parentPid = process.ppid;
   const transport = new StdioServerTransport();
   installStdioLifecycle({
     transport,
     onCloseAssignable: server.server,
     envName: 'EDD_PARENT_WATCHDOG_MS',
+    parentPid,
   });
   await server.connect(transport);
 }
