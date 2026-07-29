@@ -8,6 +8,9 @@ import { EDDClient, EDDHttpError } from './edd-client.js';
 import { loadEnv, validateEnv } from './env.js';
 import { installStdioLifecycle } from './lifecycle.js';
 
+// Pin before sync startup (loadEnv/tool registration) — process.ppid is dynamic.
+const parentPid = process.ppid;
+
 type PackageJson = { version: string };
 const require = createRequire(import.meta.url);
 const packageJson = require('../package.json') as PackageJson;
@@ -647,8 +650,6 @@ server.registerTool(
 // Start Server
 // ============================================================================
 async function main() {
-  // Capture before any await — process.ppid is dynamic.
-  const parentPid = process.ppid;
   const transport = new StdioServerTransport();
   installStdioLifecycle({
     transport,
